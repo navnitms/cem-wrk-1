@@ -1,0 +1,62 @@
+version: "3.9"
+services:
+  postgres:
+    container_name: cem_postgres
+    image: postgres:12
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=cem-dev-user
+      - POSTGRES_PASSWORD=cem-dev-password
+      - POSTGRES_DB=cem-db
+      - PGADMIN_DEFAULT_EMAIL=admin@example.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    volumes:
+      - postgresdata:/data/postgres
+      - postgresdbdata:/var/lib/postgresql/data
+    networks:
+      - postgres
+
+
+  localstack:
+    image: localstack/localstack:latest
+    environment: 
+      - AWS_DEFAULT_REGION=ap-south-1
+      - EDGE_PORT=4566
+      - SERVICES=s3,sqs
+      - PORT_WEB_UI=4599
+    ports:
+       - "4566-4583:4566-4583"
+       - "4599:4599"
+    volumes: 
+      - "${LOCALSTACK_VOLUME_DIR:-./volume}:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      
+  setup-resources:
+    image: amazon/aws-cli
+    environment:
+      - AWS_ACCESS_KEY_ID=AKIAEXAMPLE123
+      - AWS_SECRET_ACCESS_KEY=AWSSECRETACCESSEY123
+      - AWS_DEFAULT_REGION=us-east-1
+    entrypoint: /bin/sh -c
+    command: >
+      "
+       sleep 10
+       aws --endpoint-url=http://localstack:4566 s3 mb s3://master
+      "
+    depends_on:
+      - localstack  
+
+volumes:
+  postgresdata:
+    driver: local
+  postgresdbdata:
+    driver: local
+  pgadmindata:
+    driver: local
+  pgadminlibdata:
+    driver: local
+
+networks:
+  postgres:
+    driver: bridge
